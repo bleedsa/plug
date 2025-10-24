@@ -25,33 +25,35 @@ impl Default for Sin {
 
 #[derive(Params)]
 struct SinParams {
-    #[id="gain"]
+    #[id = "gain"]
     pub gain: FloatParam,
-    #[id="freq"]
+    #[id = "freq"]
     pub freq: FloatParam,
-    #[id="usemidi"]
-    pub use_midi: BoolParam,
 }
 
 impl Default for SinParams {
     fn default() -> Self {
         Self {
-            gain: FloatParam::new("gain", -10., FloatRange::Linear {
-                min: -30.,
-                max: 0.,
-            })
+            gain: FloatParam::new(
+                "gain",
+                -10.,
+                FloatRange::Linear { min: -30., max: 0. },
+            )
             .with_smoother(SmoothingStyle::Linear(3.))
             .with_step_size(0.01)
             .with_unit("dB"),
-            freq: FloatParam::new("Freq", 420., FloatRange::Skewed {
-                min: 1.,
-                max: 20_000.,
-                factor: FloatRange::skew_factor(-2.)
-            })
+            freq: FloatParam::new(
+                "Freq",
+                420.,
+                FloatRange::Skewed {
+                    min: 1.,
+                    max: 20_000.,
+                    factor: FloatRange::skew_factor(-2.),
+                },
+            )
             .with_smoother(SmoothingStyle::Linear(10.))
             .with_value_to_string(formatters::v2s_f32_hz_then_khz(0))
             .with_string_to_value(formatters::s2v_f32_hz_then_khz()),
-            use_midi: BoolParam::new("Use MIDI", false),
         }
     }
 }
@@ -76,7 +78,7 @@ impl Sin {
 }
 
 impl Plugin for Sin {
-    const NAME: &str = "Sine";
+    const NAME: &str = "Bleedsa Sine";
     const VENDOR: &str = "Skylar Bleed";
     const URL: &str = "";
     const EMAIL: &str = "sbleed@proton.me";
@@ -103,7 +105,12 @@ impl Plugin for Sin {
         self.params.clone()
     }
 
-    fn initialize(&mut self, _: &AudioIOLayout, cfg: &BufferConfig, _: &mut impl InitContext<Self>) -> bool {
+    fn initialize(
+        &mut self,
+        _: &AudioIOLayout,
+        cfg: &BufferConfig,
+        _: &mut impl InitContext<Self>,
+    ) -> bool {
         self.sample_rate = cfg.sample_rate;
         true
     }
@@ -115,47 +122,51 @@ impl Plugin for Sin {
         self.midi_note_gain.reset(0.);
     }
 
-    fn process(&mut self, buf: &mut Buffer, _: &mut AuxiliaryBuffers, ctx: &mut impl ProcessContext<Self>) -> ProcessStatus {
-        let mut next = ctx.next_event();
+    fn process(
+        &mut self,
+        buf: &mut Buffer,
+        _: &mut AuxiliaryBuffers,
+        ctx: &mut impl ProcessContext<Self>,
+    ) -> ProcessStatus {
 
         for (id, samples) in buf.iter_samples().enumerate() {
             let gain = self.params.gain.smoothed.next();
-            let sine = if self.params.use_midi.value() {
-                while let Some(e) = next {
+            let sine = {
+                while let Some(e) = ctx.next_event() {
                     if e.timing() > id as u32 {
                         break;
                     }
 
                     match e {
-                        NoteEvent::NoteOn { note, velocity: v, .. } => {
+                        NoteEvent::NoteOn {
+                            note, velocity: v, ..
+                        } => {
                             self.midi_note_id = note;
                             self.midi_note_freq = util::midi_note_to_freq(note);
                             self.set_gain_tar(v);
                         }
-                        NoteEvent::NoteOff { note, .. } if note == self.midi_note_id => {
+                        NoteEvent::NoteOff { note, .. }
+                            if note == self.midi_note_id =>
+                        {
                             self.set_gain_tar(0.);
                         }
-                        NoteEvent::PolyPressure { note, pressure: p, .. }
-                            if note == self.midi_note_id => {
-                                self.set_gain_tar(p);
-                            }
+                        NoteEvent::PolyPressure {
+                            note, pressure: p, ..
+                        } if note == self.midi_note_id => {
+                            self.set_gain_tar(p);
+                        }
                         _ => (),
                     }
                 }
 
-                next = ctx.next_event();
-
                 self.calc(self.midi_note_freq) * self.midi_note_gain.next()
-            } else {
-                let f = self.params.freq.smoothed.next();
-                self.calc(f)
             };
 
             for s in samples {
                 *s = sine * util::db_to_gain_fast(gain);
             }
         }
-        
+
         ProcessStatus::KeepAlive
     }
 }
