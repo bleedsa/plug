@@ -1,0 +1,11 @@
+[package]
+name = "sin"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+path = "lib.rs"
+crate-type = ["cdylib"]
+
+[dependencies]
+nih_plug = { git = "https://github.com/robbert-vdh/nih-plug" }
