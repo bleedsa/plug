@@ -1,8 +1,13 @@
+/ filters
+ext:{x~|#[x]#|y} / y has ext x?
+cpp:ext".cpp"
+graphcpp:graph@&cpp'graph:0:"graph"
+
 / config
-cfg:![("cc";   "cxx")
-      ("clang";"clang++")]
-cfg,:(!).,'("cflags";"-I3rd/clap/include -Wall -Wextra -Wno-unused-parameter")
-cfg,:(!).,'("cxxflags";cfg"cflags")
+cfg:(!).+(("cc";"clang")
+          ("cxx";"clang++")
+          ("cflags";"-Wall -Wextra -Wno-unused-parameter -I3rd/clap/include"))
+cfg,:(!).,'("cxxflags";" "/(cfg"cflags";"-Iinc"))
 
 / ninja
 rule:{[n;c]"rule ",n,"\n  command = ",c}
@@ -14,17 +19,13 @@ cxx:bld"cxx"
 outof:{"o/",x}
 (objof;sharedof):{outof y,".",x}@'("o";"so")
 
-/ filters
-ext:{x~|#[x]#|y} / y has ext x?
-cpp:ext".cpp"
-
-graphcpp:graph@&cpp'graph:0:"graph"
+shared:bld["sharedxx";sharedof"graph";objof'graphcpp]
 
 `0:'("cc = ",cfg"cc"
      "cxx = ",cfg"cxx"
      "cflags = ",cfg"cflags"
      "cxxflags = ",cfg"cxxflags"
      rule["exe";"$in"]
-     rule["cxx";"$cxx -c $cflags -o $out $in"]
-     rule["sharedxx";"$cxx -shared $cflags -o $out $in"]
-     "\n"/{cxx[objof x;,"graph/",x]}'graphcpp);
+     rule["cxx";"$cxx -c $cxxflags -MD -MF $out.d -o $out $in"]
+     rule["sharedxx";"$cxx -shared $cxxflags -o $out $in"]
+     "\n"/{cxx[objof x;,"graph/",x]}'graphcpp;shared);
