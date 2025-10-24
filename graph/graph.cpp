@@ -20,8 +20,8 @@ struct Graph {
 	B<Voice> voices;
 };
 
-sta auto mkgraph(con Host*h)->Graph*{
-	auto G=(Graph*)calloc(1,Z(Graph));
+sta X mkgraph(con Host*h)->Graph*{
+	X G=(Graph*)calloc(1,Z(Graph));
 	G->host=h;
 	G->plugin.plugin_data=G;
 	return G;
@@ -48,9 +48,9 @@ sta con PlugDesc plug_desc={
 sta con Plug plug_class={
 	.desc=&plug_desc,
 	.plugin_data=nullptr,
-	.init=[](con Plug*x)->bool{auto p=(Graph*)x->plugin_data;return true;},
+	.init=[](con Plug*x)->bool{X p=(Graph*)x->plugin_data;return true;},
 	.destroy=[](con Plug*x){
-		auto p=(Graph*)x->plugin_data;
+		X p=(Graph*)x->plugin_data;
 		p->voices.del();
 		return true;
 	},
@@ -64,7 +64,7 @@ sta con Factory factory={
 		return i == 0 ? &plug_desc : nullptr;
 	},
 	.create_plugin=[](con Factory *f,con Host*h,CC*id)->con Plug*{
-		auto G=mkgraph(h);
+		X G=mkgraph(h);
 		return&G->plugin;
 	},
 };
