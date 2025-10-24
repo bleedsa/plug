@@ -1,8 +1,23 @@
+use egui::widgets::Slider;
 use nih_plug::prelude::*;
+use nih_plug_egui::{
+    EguiState, create_egui_editor,
+    egui::{self, Vec2},
+    resizable_window::ResizableWindow,
+    widgets,
+};
 use std::{f32::consts, sync::Arc};
 
-pub struct Sin {
-    params: Arc<SinParams>,
+macro_rules! set_param {
+    ($set:expr, $par:expr, $val:expr) => {{
+        $set.begin_set_parameter($par);
+        $set.set_parameter($par, $val);
+        $set.end_set_parameter($par);
+    }};
+}
+
+pub struct Graph {
+    params: Arc<GraphParams>,
     sample_rate: f32,
     phase: f32,
     midi_note_id: u8,
@@ -10,10 +25,10 @@ pub struct Sin {
     midi_note_gain: Smoother<f32>,
 }
 
-impl Default for Sin {
+impl Default for Graph {
     fn default() -> Self {
         Self {
-            params: Arc::new(SinParams::default()),
+            params: Arc::new(GraphParams::default()),
             sample_rate: 1.,
             phase: 0.,
             midi_note_id: 0,
@@ -24,14 +39,14 @@ impl Default for Sin {
 }
 
 #[derive(Params)]
-struct SinParams {
+struct GraphParams {
     #[id = "gain"]
     pub gain: FloatParam,
-    #[id = "freq"]
-    pub freq: FloatParam,
+    #[persist = "editor-state"]
+    editor_state: Arc<EguiState>,
 }
 
-impl Default for SinParams {
+impl Default for GraphParams {
     fn default() -> Self {
         Self {
             gain: FloatParam::new(
@@ -42,23 +57,12 @@ impl Default for SinParams {
             .with_smoother(SmoothingStyle::Linear(3.))
             .with_step_size(0.01)
             .with_unit("dB"),
-            freq: FloatParam::new(
-                "Freq",
-                440.,
-                FloatRange::Skewed {
-                    min: 1.,
-                    max: 20_000.,
-                    factor: FloatRange::skew_factor(-2.),
-                },
-            )
-            .with_smoother(SmoothingStyle::Linear(10.))
-            .with_value_to_string(formatters::v2s_f32_hz_then_khz(0))
-            .with_string_to_value(formatters::s2v_f32_hz_then_khz()),
+            editor_state: EguiState::from_size(300, 100),
         }
     }
 }
 
-impl Sin {
+impl Graph {
     /** calculate the sine wave */
     fn calc(&mut self, freq: f32) -> f32 {
         let phs_delta = freq / self.sample_rate;
@@ -77,8 +81,8 @@ impl Sin {
     }
 }
 
-impl Plugin for Sin {
-    const NAME: &str = "BSA Sin";
+impl Plugin for Graph {
+    const NAME: &str = "BSA Graph";
     const VENDOR: &str = "Skylar Bleed";
     const URL: &str = "";
     const EMAIL: &str = "sbleed@proton.me";
@@ -122,6 +126,37 @@ impl Plugin for Sin {
         self.midi_note_id = 0;
         self.midi_note_freq = 1.;
         self.midi_note_gain.reset(0.);
+    }
+
+    fn editor(&mut self, _: AsyncExecutor<Self>) -> Option<Box<dyn Editor>> {
+        let params = self.params.clone();
+        let gui = params.editor_state.clone();
+
+        create_egui_editor(
+            self.params.editor_state.clone(),
+            (),
+            |_, _| {},
+            move |ctx, set, _| {
+                ResizableWindow::new("graph-win")
+                    .min_size(Vec2::new(300., 100.))
+                    .show(ctx, gui.as_ref(), |ui| {
+                        ui.label("gain");
+                        ui.add(
+                            Slider::from_get_set(-30.0..=30., |x| {
+                                if let Some(gain) = x {
+                                    let db = util::gain_to_db(gain as f32);
+                                    set_param!(set, &params.gain, db);
+                                    gain
+                                } else {
+                                    util::gain_to_db(params.gain.value())
+                                        as f64
+                                }
+                            })
+                            .suffix("db"),
+                        );
+                    });
+            },
+        )
     }
 
     fn process(
@@ -181,8 +216,8 @@ impl Plugin for Sin {
     }
 }
 
-impl Vst3Plugin for Sin {
-    const VST3_CLASS_ID: [u8; 16] = *b"BSAsin          ";
+impl Vst3Plugin for Graph {
+    const VST3_CLASS_ID: [u8; 16] = *b"BSAgraph        ";
     const VST3_SUBCATEGORIES: &[Vst3SubCategory] = &[
         Vst3SubCategory::Instrument,
         Vst3SubCategory::Synth,
@@ -190,4 +225,4 @@ impl Vst3Plugin for Sin {
     ];
 }
 
-nih_export_vst3!(Sin);
+nih_export_vst3!(Graph);
