@@ -24,6 +24,7 @@ graphcpp:graph@&cpp'graph:0:"graph"
      "cxx = ",cfg"cxx"
      "cflags = ",cfg"cflags"
      "cxxflags = ",cfg"cxxflags"
+     rule["exe";"$in"]
      rule["cxx";"$cxx -c $cflags -o $out $in"]
      rule["sharedxx";"$cxx -shared $cflags -o $out $in"]
      "\n"/{cxx[objof x;,"graph/",x]}'graphcpp);
