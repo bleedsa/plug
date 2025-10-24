@@ -1,11 +1,8 @@
 #include <u.h>
 #include <vec.h>
 
-#include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <assert.h>
-#include <math.h>
 
 #include <clap/clap.h>
 
@@ -20,7 +17,7 @@ struct Graph {
 	Plug plugin;
 	con Host *host;
 	float sample_rate;
-	Vec<Voice> voices;
+	B<Voice> voices;
 };
 
 sta auto mkgraph(con Host*h)->Graph*{
@@ -45,6 +42,17 @@ sta con PlugDesc plug_desc={
 		CLAP_PLUGIN_FEATURE_SYNTHESIZER,
 		CLAP_PLUGIN_FEATURE_STEREO,
 		nullptr,
+	},
+};
+
+sta con Plug plug_class={
+	.desc=&plug_desc,
+	.plugin_data=nullptr,
+	.init=[](con Plug*x)->bool{auto p=(Graph*)x->plugin_data;return true;},
+	.destroy=[](con Plug*x){
+		auto p=(Graph*)x->plugin_data;
+		p->voices.del();
+		return true;
 	},
 };
 

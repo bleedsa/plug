@@ -8,7 +8,7 @@
 #include <clap/clap.h>
 
 #define Z(x)(sizeof(x))
-
+#define MMV(x,y,z)(memmove(x,y,z))
 #define fatal(f...){fprintf(stderr,f);exit(-1);}
 
 /* llvm */
@@ -24,6 +24,7 @@ using i64=int64_t;
 #define inl [[clang::always_inline]]
 #define sta static
 #define con const
+#define X auto
 using V=void;
 using I=i32;
 using F=float;
