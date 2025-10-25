@@ -1,7 +1,8 @@
 / filters
 ext:{x~|#[x]#|y} / y has ext x?
 cpp:ext".cpp"
-graphcpp:graph@&cpp'graph:0:"graph"
+srcs:{[fil;dir](dir;d@&fil'd:0:dir)}
+(tmpdir;tmpcpp):srcs[cpp;"tmp/"]
 
 / config
 cfg:!/+((`cc;    "clang")
@@ -23,7 +24,6 @@ cxx:bld"cxx"
 outof:{"o/",x}
 (objof;sharedof):{outof y,".",x}@'("o";"so")
 
-shared:bld["sharedxx";sharedof"graph";objof'graphcpp]
 outd:(!).,'(`dep;"$out.d")
 
 `0:'("cc = ",cfg`cc
@@ -33,4 +33,5 @@ outd:(!).,'(`dep;"$out.d")
      rule["exe";"$in"]
      rule["cxx";outd,(!).,'(`cmd;"$cxx -c $cxxflags -MD -MF $out.d -o $out $in")]
      rule["sharedxx";outd,(!).,'(`cmd;"$cxx -shared $cxxflags -o $out $in")]
-     "\n"/{cxx[objof x;,"graph/",x]}'graphcpp;shared);
+     "\n"/{cxx[objof x;,tmpdir,x]}'tmpcpp
+     bld["sharedxx";sharedof"tmp";objof'tmpcpp]);
