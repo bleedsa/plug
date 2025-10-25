@@ -31,7 +31,8 @@ outd:(!).,'(`dep;"$out.d")
      "cflags = ",cfg`cflags
      "cxxflags = ",cfg`cxxflags
      rule["exe";"$in"]
-     rule["cxx";outd,(!).,'(`cmd;"$cxx -c $cxxflags -MD -MF $out.d -o $out $in")]
+     rule["cxx";outd,(!).,'(`cmd;" "/("$cxx -c $cxxflags -MD -MF $out.d"
+                                      "-o $out $in"))]
      rule["sharedxx";outd,(!).,'(`cmd;"$cxx -shared $cxxflags -o $out $in")]
      "\n"/{cxx[objof x;,tmpdir,x]}'tmpcpp
      bld["sharedxx";sharedof"tmp";objof'tmpcpp]);

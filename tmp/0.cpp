@@ -13,26 +13,26 @@ struct Voice {
 	float phase;
 };
 
-struct Graph {
+struct Tmp {
 	Plug plugin;
 	con Host*host;
 	float sample_rate;
 	B<Voice> voices;
 };
 
-inl sta X getplug(con Plug*x)->Graph*{return (Graph*)x->plugin_data;}
-inl sta X delvoices(con Plug*x)->V{X G=getplug(x);G->voices.del();}
+inl sta X getplug(con Plug*x)->Tmp*{return (Tmp*)x->plugin_data;}
+inl sta X delvoices(con Plug*x)->V{X P=getplug(x);P->voices.del();}
 
 sta con PlugDesc plug_desc={
 	.clap_version=CLAP_VERSION_INIT,
-	.id="BSA.Graph",
-	.name="BSA Graph",
+	.id="BSA.Tmp",
+	.name="BSA Tmp",
 	.vendor="bleedsa",
 	.url="https://badboy.institute/~skye",
 	.manual_url="",
 	.support_url="",
 	.version="1.0.0",
-	.description="k graphing calculator synth",
+	.description="tmp",
 	.features=(CC*[]){
 		CLAP_PLUGIN_FEATURE_INSTRUMENT,
 		CLAP_PLUGIN_FEATURE_SYNTHESIZER,
@@ -68,17 +68,17 @@ sta con AudioPorts audio_ports={
 sta con Plug plug_class={
 	.desc=&plug_desc,
 	.plugin_data=nullptr,
-	.init=[](con Plug*x)->bool{X G=(Graph*)x->plugin_data;return true;},
+	.init=[](con Plug*x)->bool{X P=(Tmp*)x->plugin_data;return true;},
 	.destroy=[](con Plug*x){delvoices(x);free((V*)x);},
 	.activate=[](con Plug*x,f64 rate,u32 minframe,u32 maxframe)->bool{
-		X G=getplug(x);G->sample_rate=rate;
+		X P=getplug(x);P->sample_rate=rate;
 		return true;
 	},
 	.deactivate=[](con Plug*x){},
 	.start_processing=[](con Plug*x){return true;},
 	.reset=[](con Plug*x){delvoices(x);},
 	.process=[](con Plug*x,con Process*p)->clap_process_status{
-		X G=getplug(x);
+		X P=getplug(x);
 		return CLAP_PROCESS_CONTINUE;
 	},
 	.get_extension=[](con Plug*x,CC*id)->con V*{
@@ -88,12 +88,12 @@ sta con Plug plug_class={
 	},
 };
 
-sta X mkgraph(con Host*h)->Graph*{
-	X G=(Graph*)calloc(1,Z(Graph));
-	G->host=h;
-	G->plugin=plug_class;
-	G->plugin.plugin_data=G;
-	return G;
+sta X mktmp(con Host*h)->Tmp*{
+	X P=(Tmp*)calloc(1,Z(Tmp));
+	P->host=h;
+	P->plugin=plug_class;
+	P->plugin.plugin_data=P;
+	return P;
 }
 
 
@@ -105,8 +105,8 @@ sta con Factory factory={
 		return i == 0 ? &plug_desc : nullptr;
 	},
 	.create_plugin=[](con Factory *f,con Host*h,CC*id)->con Plug*{
-		X G=mkgraph(h);
-		return&G->plugin;
+		X P=mktmp(h);
+		return&P->plugin;
 	},
 };
 
