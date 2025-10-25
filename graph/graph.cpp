@@ -15,17 +15,13 @@ struct Voice {
 
 struct Graph {
 	Plug plugin;
-	con Host *host;
+	con Host*host;
 	float sample_rate;
 	B<Voice> voices;
 };
 
-sta X mkgraph(con Host*h)->Graph*{
-	X G=(Graph*)calloc(1,Z(Graph));
-	G->host=h;
-	G->plugin.plugin_data=G;
-	return G;
-}
+inl sta X getplug(con Plug*x)->Graph*{return (Graph*)x->plugin_data;}
+inl sta X delvoices(con Plug*x)->V{X G=getplug(x);G->voices.del();}
 
 sta con PlugDesc plug_desc={
 	.clap_version=CLAP_VERSION_INIT,
@@ -45,16 +41,61 @@ sta con PlugDesc plug_desc={
 	},
 };
 
-sta con Plug plug_class={
-	.desc=&plug_desc,
-	.plugin_data=nullptr,
-	.init=[](con Plug*x)->bool{X p=(Graph*)x->plugin_data;return true;},
-	.destroy=[](con Plug*x){
-		X p=(Graph*)x->plugin_data;
-		p->voices.del();
+sta con NotePorts note_ports={
+	.count=[](con Plug*x,bool inp)->u32{return inp?1:0;},
+	.get=[](con Plug*x,u32 i,bool inp, NotePortInfo*info)->bool{
+		if(!inp||i)return false;
+		info->id=0,info->supported_dialects=CLAP_NOTE_DIALECT_CLAP;
+		info->preferred_dialect=CLAP_NOTE_DIALECT_CLAP;
+		snprintf(info->name,Z(info->name),"%s","Note Port");
 		return true;
 	},
 };
+
+sta con AudioPorts audio_ports={
+	.count=[](con Plug*x,bool inp)->u32{return inp?0:1;},
+	.get=[](con Plug*x,u32 idx,bool inp,AudioPortInfo*info)->bool{
+		if(inp||idx)return false;
+		info->id=0,info->channel_count=2;
+		info->flags=CLAP_AUDIO_PORT_IS_MAIN;
+		info->port_type=CLAP_PORT_STEREO;
+		info->in_place_pair=CLAP_INVALID_ID;
+		snprintf(info->name,Z(info->name),"%s","Audio Output");
+		return true;
+	},
+};
+
+sta con Plug plug_class={
+	.desc=&plug_desc,
+	.plugin_data=nullptr,
+	.init=[](con Plug*x)->bool{X G=(Graph*)x->plugin_data;return true;},
+	.destroy=[](con Plug*x){delvoices(x);free((V*)x);},
+	.activate=[](con Plug*x,f64 rate,u32 minframe,u32 maxframe)->bool{
+		X G=getplug(x);G->sample_rate=rate;
+		return true;
+	},
+	.deactivate=[](con Plug*x){},
+	.start_processing=[](con Plug*x){return true;},
+	.reset=[](con Plug*x){delvoices(x);},
+	.process=[](con Plug*x,con Process*p)->clap_process_status{
+		X G=getplug(x);
+		return CLAP_PROCESS_CONTINUE;
+	},
+	.get_extension=[](con Plug*x,CC*id)->con V*{
+		if(streq(id,CLAP_EXT_NOTE_PORTS))return&note_ports;
+		if(streq(id,CLAP_EXT_AUDIO_PORTS))return&audio_ports;
+		return nullptr;
+	},
+};
+
+sta X mkgraph(con Host*h)->Graph*{
+	X G=(Graph*)calloc(1,Z(Graph));
+	G->host=h;
+	G->plugin=plug_class;
+	G->plugin.plugin_data=G;
+	return G;
+}
+
 
 sta con Factory factory={
 	.get_plugin_count=[](con Factory*f)->u32{
